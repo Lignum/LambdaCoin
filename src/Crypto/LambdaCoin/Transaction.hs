@@ -1,9 +1,12 @@
 module Crypto.LambdaCoin.Transaction where
 
+import Crypto.LambdaCoin.MerkleRoot
 import Crypto.LambdaCoin.Utils
 
 import Data.Bifunctor
 import Data.Binary
+
+import qualified Data.ByteString.Lazy as BL
 
 newtype OutputIndex
   = OutputIndex Int
@@ -58,3 +61,6 @@ instance Binary Transaction where
 
 transactionID :: Transaction -> Hash
 transactionID = hashBinary
+
+transactionMerkleRoot :: [Transaction] -> Hash
+transactionMerkleRoot txs = merkleRoot $ BL.toStrict . encode <$> txs
