@@ -1,6 +1,6 @@
-module Crypto.Transaction where
+module Crypto.LambdaCoin.Transaction where
 
-import Crypto.Utils
+import Crypto.LambdaCoin.Utils
 
 import Data.Bifunctor
 import Data.Binary

@@ -1,4 +1,4 @@
-module Crypto.Utils where
+module Crypto.LambdaCoin.Utils where
 
 import Crypto.Saltine.Core.Hash
 

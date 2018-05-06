@@ -1,10 +1,10 @@
 {-# LANGUAGE MultiParamTypeClasses, FunctionalDependencies, OverloadedStrings #-}
-module Crypto.SQL(SQLObject(..)
+module Crypto.LambdaCoin.SQL(SQLObject(..)
                 , initDB
                 , transactionInsert) where
 
-import Crypto.Transaction
-import Crypto.Utils (Hash)
+import Crypto.LambdaCoin.Transaction
+import Crypto.LambdaCoin.Utils (Hash)
 
 import Control.Monad
 import Control.Monad.Except
