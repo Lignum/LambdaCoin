@@ -1,4 +1,4 @@
-{-# LANGUAGE AllowAmbiguousTypes, MultiParamTypeClasses, FunctionalDependencies, OverloadedStrings #-}
+{-# LANGUAGE MultiParamTypeClasses, FunctionalDependencies, OverloadedStrings #-}
 module Crypto.SQL(SQLObject(..)
                 , initDB
                 , transactionInsert) where
@@ -15,6 +15,7 @@ import qualified Data.ByteString as B
 import qualified Data.ByteString.Lazy as BL
 import Data.Traversable
 import Data.String
+import Data.Proxy
 
 import qualified Database.SQLite.Simple as SQL
 import Database.SQLite.Simple.FromRow
@@ -49,13 +50,13 @@ initDB conn = liftIO $ do
 class SQLObject a k | a -> k where
   sqlRetrieve :: MonadIO m => SQL.Connection -> k -> m (Maybe a)
   sqlInsert   :: MonadIO m => SQL.Connection -> k -> a -> m ()
-  sqlDelete   :: MonadIO m => SQL.Connection -> k -> m ()
+  sqlDelete   :: MonadIO m => Proxy a -> SQL.Connection -> k -> m ()
 
 query :: [String] -> SQL.Query
 query = fromString . unlines
 
 instance SQLObject Transaction B.ByteString where
-  sqlRetrieve conn tid = liftIO $ do
+  sqlRetrieve conn tid = liftIO . SQL.withTransaction conn $ do
     inputsSql <- SQL.query conn (query [ "SELECT `previous`, `outputIndex`, `script` FROM `transactions`"
                                        , "NATURAL JOIN `transactionToInput`"
                                        , "INNER JOIN `inputs` ON `inputs`.`id` = `inputID`"
@@ -72,7 +73,7 @@ instance SQLObject Transaction B.ByteString where
     pure $ if null inputs || null outputs then Nothing
                                           else Just $ Transaction inputs outputs
 
-  sqlInsert conn tid (Transaction ins outs) = liftIO $ do
+  sqlInsert conn tid (Transaction ins outs) = liftIO . SQL.withTransaction conn $ do
     SQL.execute conn "INSERT INTO `transactions` (`id`, `block`) VALUES (?, ?)" (tid, Nothing :: Maybe Int)
 
     let inputs  = flip fmap ins $ \(TxInput prev (OutputIndex oidx) scr) -> (prev, oidx, encode scr)
@@ -92,10 +93,17 @@ instance SQLObject Transaction B.ByteString where
     forM_ outputIDs $ \oid ->
       SQL.execute conn "INSERT INTO `transactionToOutput` (`id`, `outputID`) VALUES (?, ?)" (tid, oid)
 
-  sqlDelete conn tid = liftIO $ do
-    --SQL.run conn (unlines [ "DELETE FROM `transactions` WHERE `id` = ?"
-    --                      , "DELETE FROM `inputs` WHERE ``"]) [SQL.toSql tid]
-    pure ()
+  sqlDelete _ conn tid = liftIO . SQL.withTransaction conn $ do
+    inputIDs  <- SQL.query conn "SELECT `inputID` FROM `transactions` NATURAL JOIN `transactionToInput` WHERE `id` = ?" $ SQL.Only tid :: IO [SQL.Only Int]
+    outputIDs <- SQL.query conn "SELECT `outputID` FROM `transactions` NATURAL JOIN `transactionToOutput` WHERE `id` = ?" $ SQL.Only tid :: IO [SQL.Only Int]
+
+    SQL.executeMany conn "DELETE FROM `inputs` WHERE `id` = ?" inputIDs
+    SQL.executeMany conn "DELETE FROM `outputs` WHERE `id` = ?" outputIDs
+
+    SQL.executeMany conn "DELETE FROM `transactionToInput` WHERE `inputID` = ?" inputIDs
+    SQL.executeMany conn "DELETE FROM `transactionToOutput` WHERE `outputID` = ?" outputIDs
+
+    SQL.execute conn "DELETE FROM `transactions` WHERE `id` = ?" $ SQL.Only tid
 
 transactionInsert :: MonadIO m => SQL.Connection -> Transaction -> m ()
 transactionInsert conn tx = sqlInsert conn (transactionID tx) tx

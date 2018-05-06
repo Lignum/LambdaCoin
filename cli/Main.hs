@@ -7,6 +7,8 @@ import Crypto.LambdaCoin
 import Crypto.SQL
 import Crypto.Transaction
 
+import Data.Proxy
+
 import qualified Database.SQLite.Simple as SQL
 
 main :: IO ()
@@ -20,3 +22,4 @@ main = do
     tx' <- sqlRetrieve conn $ transactionID tx
     print tx'
     print $ Just tx == tx'
+    sqlDelete (Proxy :: Proxy Transaction) conn $ transactionID tx
