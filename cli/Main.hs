@@ -1,8 +1,6 @@
 {-# LANGUAGE OverloadedStrings #-}
 module Main where
 
-import Control.Monad.Except
-import Control.Monad.IO.Class
 import Crypto.LambdaCoin
 import Crypto.LambdaCoin.SQL
 import Crypto.LambdaCoin.SQL.Transaction
