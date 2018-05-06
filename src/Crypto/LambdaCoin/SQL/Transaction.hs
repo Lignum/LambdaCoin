@@ -4,7 +4,7 @@ module Crypto.LambdaCoin.SQL.Transaction where
 import Crypto.LambdaCoin.SQL
 import Crypto.LambdaCoin.SQL.Utils
 import Crypto.LambdaCoin.Transaction
-import Crypto.LambdaCoin.Utils (Hash)
+import Crypto.LambdaCoin.Utils
 
 import Control.Monad
 import Control.Monad.IO.Class
@@ -14,33 +14,33 @@ import Data.Binary
 import qualified Data.ByteString as B
 import qualified Data.ByteString.Lazy as BL
 
-import Data.Proxy
-
 import qualified Database.SQLite.Simple as SQL
 
 instance SQLObject Transaction B.ByteString where
-  sqlRetrieve conn tid = liftIO . SQL.withTransaction conn $ do
+  sqlRetrieve conn tid' = liftIO $ do
+    let tid = hexEncode' tid'
     inputsSql <- SQL.query conn (query [ "SELECT `previous`, `outputIndex`, `script` FROM `transactions`"
                                        , "NATURAL JOIN `transactionToInput`"
                                        , "INNER JOIN `inputs` ON `inputs`.`id` = `inputID`"
-                                       , "WHERE `transactions`.`id` = ?" ]) $ SQL.Only tid :: IO [(Hash, Int, BL.ByteString)]
+                                       , "WHERE `transactions`.`id` = ?" ]) $ SQL.Only tid :: IO [(String, Int, String)]
 
     outputsSql <- SQL.query conn (query [ "SELECT `value`, `script` FROM `transactions`"
                                         , "NATURAL JOIN `transactionToOutput`"
                                         , "INNER JOIN `outputs` ON `outputs`.`id` = `outputID`"
-                                        , "WHERE `transactions`.`id` = ?" ]) $ SQL.Only tid :: IO [(Int, BL.ByteString)]
+                                        , "WHERE `transactions`.`id` = ?" ]) $ SQL.Only tid :: IO [(Int, String)]
 
-    let inputs  = flip fmap inputsSql $ \(prev, oidx, scr) -> TxInput prev (OutputIndex oidx) $ decode scr
-        outputs = flip fmap outputsSql $ \(val, scr) -> TxOutput val $ decode scr
+    let inputs  = flip fmap inputsSql $ \(prev, oidx, scr) -> TxInput (hexDecode' prev) (OutputIndex oidx) $ sqlDecode scr
+        outputs = flip fmap outputsSql $ \(val, scr) -> TxOutput val $ sqlDecode scr
 
     pure $ if null inputs || null outputs then Nothing
                                           else Just $ Transaction inputs outputs
 
-  sqlInsert conn tid (Transaction ins outs) = liftIO . SQL.withTransaction conn $ do
-    SQL.execute conn "INSERT INTO `transactions` (`id`, `block`) VALUES (?, ?)" (tid, Nothing :: Maybe Int)
+  sqlInsert conn tid' (Transaction ins outs) = liftIO $ do
+    let tid = hexEncode' tid'
+    SQL.execute conn "INSERT INTO `transactions` (`id`) VALUES (?)" $ SQL.Only tid
 
-    let inputs  = flip fmap ins $ \(TxInput prev (OutputIndex oidx) scr) -> (prev, oidx, encode scr)
-        outputs = flip fmap outs $ \(TxOutput val scr) -> (val, encode scr)
+    let inputs  = flip fmap ins $ \(TxInput prev (OutputIndex oidx) scr) -> (hexEncode' prev, oidx, sqlEncode scr)
+        outputs = flip fmap outs $ \(TxOutput val scr) -> (val, sqlEncode scr)
 
     inputIDs <- forM inputs $ \r -> do
       SQL.execute conn "INSERT INTO `inputs` (`previous`, `outputIndex`, `script`) VALUES (?, ?, ?)" r
@@ -56,7 +56,7 @@ instance SQLObject Transaction B.ByteString where
     forM_ outputIDs $ \oid ->
       SQL.execute conn "INSERT INTO `transactionToOutput` (`id`, `outputID`) VALUES (?, ?)" (tid, oid)
 
-  sqlDelete _ conn tid = liftIO . SQL.withTransaction conn $ do
+  sqlDelete _ conn tid = liftIO $ do
     inputIDs  <- SQL.query conn "SELECT `inputID` FROM `transactions` NATURAL JOIN `transactionToInput` WHERE `id` = ?" $ SQL.Only tid :: IO [SQL.Only Int]
     outputIDs <- SQL.query conn "SELECT `outputID` FROM `transactions` NATURAL JOIN `transactionToOutput` WHERE `id` = ?" $ SQL.Only tid :: IO [SQL.Only Int]
 

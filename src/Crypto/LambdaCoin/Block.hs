@@ -5,15 +5,12 @@ import Crypto.LambdaCoin.Utils
 
 import Data.Binary
 import Data.Binary.Orphans
-import Data.LargeWord
 import Data.Time.Clock
-
-type Target = Word256
 
 data BlockHeader
   = BlockHeader { blockHeaderPrevBlock  :: Hash
                 , blockHeaderMerkleRoot :: Hash
-                , blockHeaderTarget     :: Target
+                , blockHeaderTarget     :: Hash
                 , blockHeaderTimestamp  :: UTCTime }
   deriving (Show, Eq)
 
