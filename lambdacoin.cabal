@@ -2,8 +2,8 @@ name:                lambdacoin
 version:             0.1.0.0
 -- synopsis:
 -- description:
-homepage:            https://github.com/Lignum/lambdacoin#readme
-license:             BSD3
+homepage:            https://github.com/Lignum/LambdaCoin
+license:             MIT
 license-file:        LICENSE
 author:              Lignum
 maintainer:          me@lignum.pw
