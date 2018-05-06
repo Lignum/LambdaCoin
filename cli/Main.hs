@@ -5,6 +5,7 @@ import Control.Monad.Except
 import Control.Monad.IO.Class
 import Crypto.LambdaCoin
 import Crypto.LambdaCoin.SQL
+import Crypto.LambdaCoin.SQL.Transaction
 import Crypto.LambdaCoin.Transaction
 
 import Data.Proxy
