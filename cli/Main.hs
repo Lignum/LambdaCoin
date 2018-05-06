@@ -1,14 +1,22 @@
+{-# LANGUAGE OverloadedStrings #-}
 module Main where
 
 import Control.Monad.Except
 import Control.Monad.IO.Class
 import Crypto.LambdaCoin
 import Crypto.SQL
+import Crypto.Transaction
 
-import qualified Database.HDBC.Sqlite3 as SQL
+import qualified Database.SQLite.Simple as SQL
 
 main :: IO ()
 main = do
   lambdaCoinInit
-  conn <- SQL.connectSqlite3 "coin.db"
-  initDB conn
+  SQL.withConnection "coin.db" $ \conn -> do
+    initDB conn
+    let tx = Transaction [TxInput "bkrek" (OutputIndex 64) TxInputScript] [TxOutput 230 TxOutputScript, TxOutput 400 TxOutputScript]
+    print tx
+    transactionInsert conn tx
+    tx' <- sqlRetrieve conn $ transactionID tx
+    print tx'
+    print $ Just tx == tx'

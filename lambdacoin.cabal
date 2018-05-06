@@ -30,9 +30,11 @@ library lambdacoin-sql
   default-language:    Haskell2010
   exposed-modules:     Crypto.SQL
   build-depends:       base >= 4.7 && < 5
+                     , lambdacoin
+                     , binary >= 0.8
+                     , bytestring >= 0.10
                      , mtl >= 2.2
-                     , HDBC >= 2.4
-                     , HDBC-sqlite3 >= 2.3
+                     , sqlite-simple >= 0.4
 
 executable lambdacoin-cli
   hs-source-dirs:      cli
@@ -42,5 +44,4 @@ executable lambdacoin-cli
                      , lambdacoin
                      , lambdacoin-sql
                      , mtl >= 2.2
-                     , HDBC >= 2.4
-                     , HDBC-sqlite3 >= 2.3
+                     , sqlite-simple >= 0.4
